@@ -8,6 +8,7 @@ import com.intellij.codeInspection.InspectionSuppressor
 import com.intellij.codeInspection.LanguageInspectionSuppressors
 import com.intellij.codeInspection.LocalInspectionEP
 import com.intellij.codeInspection.LocalInspectionTool
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.SuppressQuickFix
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.editor.Editor
@@ -76,14 +77,14 @@ interface InspectionSyntax : InspectionUtilitySyntax {
     highlightingRange: (element: K) -> TextRange? = { null },
     inspectionText: (element: K) -> String,
     applyTo: (element: K, project: Project, editor: Editor?) -> Unit,
-    isApplicable: (element: K) -> Boolean
+    isApplicable: (element: K) -> Boolean,
+    inspectionHighlightType: (element: K) -> ProblemHighlightType =
+      { _ -> ProblemHighlightType.INFORMATION }
   ): ExtensionPhase = // TODO("Adapt ExtensionProvider to Subtypes OR this is used solely for [QuickFixContributor]")
-    registerExtensionPoint(EP_NAME, LocalInspectionTool::class.java).run {
-      extensionProvider(
-        EP_NAME,
-        applicableInspection(defaultFixText, kClass, highlightingRange, inspectionText, applyTo, isApplicable)
-      )
-    }
+    extensionProvider(
+      EP_NAME,
+      applicableInspection(defaultFixText, kClass, highlightingRange, inspectionText, applyTo, isApplicable, inspectionHighlightType)
+    )
 
   fun IdeMetaPlugin.addLocalInspection(
   ): ExtensionPhase =
@@ -113,7 +114,9 @@ interface InspectionSyntax : InspectionUtilitySyntax {
     highlightingRange: (element: K) -> TextRange? = { null },
     inspectionText: (element: K) -> String,
     applyTo: (element: K, project: Project, editor: Editor?) -> Unit,
-    isApplicable: (element: K) -> Boolean
+    isApplicable: (element: K) -> Boolean,
+    inspectionHighlightType: (element: K) -> ProblemHighlightType =
+      { _ -> ProblemHighlightType.INFORMATION }
   ): AbstractApplicabilityBasedInspection<K> =
     object : AbstractApplicabilityBasedInspection<K>(kClass) {
       override val defaultFixText: String
@@ -130,6 +133,9 @@ interface InspectionSyntax : InspectionUtilitySyntax {
 
       override fun inspectionHighlightRangeInElement(element: K): TextRange? =
         highlightingRange(element)
+
+      override fun inspectionHighlightType(element: K): ProblemHighlightType =
+        inspectionHighlightType(element)
     }
 
 

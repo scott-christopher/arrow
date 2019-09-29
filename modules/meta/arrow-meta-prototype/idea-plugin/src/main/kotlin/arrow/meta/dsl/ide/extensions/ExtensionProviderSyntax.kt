@@ -10,6 +10,8 @@ import com.intellij.openapi.extensions.BaseExtensionPointName
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.extensions.LoadingOrder
 import com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.diagnostics.Diagnostic
+import org.jetbrains.kotlin.resolve.diagnostics.DiagnosticSuppressor
 
 interface ExtensionProviderSyntax : ExtensionProvider {
   // Todo: Check LoadingOrder
@@ -54,5 +56,19 @@ interface ExtensionProviderSyntax : ExtensionProvider {
     extensionProvider(
       ContainerProvider.EP_NAME,
       ContainerProvider { f(it) }
+    )
+
+  /**
+   * Check out [org.jetbrains.kotlin.resolve.checkers.PlatformDiagnosticSuppressor] for further improvements
+   */
+  fun IdeMetaPlugin.addDiagnosticSuppressor(
+    isSuppressed: (diagnostic: Diagnostic) -> Boolean
+  ): ExtensionPhase =
+    extensionProvider(
+      DiagnosticSuppressor.EP_NAME,
+      object : DiagnosticSuppressor {
+        override fun isSuppressed(diagnostic: Diagnostic): Boolean =
+          isSuppressed(diagnostic)
+      }
     )
 }
