@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.codegen.extensions.ExpressionCodegenExtension
 import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
 
 interface AsmSyntax {
-  fun codegen(
+  fun AsmCodegen(
     applyFunction: CompilerContext.(receiver: StackValue, resolvedCall: ResolvedCall<*>, c: ExpressionCodegenExtension.Context) -> StackValue?,
     applyProperty: CompilerContext.(receiver: StackValue, resolvedCall: ResolvedCall<*>, c: ExpressionCodegenExtension.Context) -> StackValue?,
     generateClassSyntheticParts: CompilerContext.(codegen: ImplementationBodyCodegen) -> Unit
