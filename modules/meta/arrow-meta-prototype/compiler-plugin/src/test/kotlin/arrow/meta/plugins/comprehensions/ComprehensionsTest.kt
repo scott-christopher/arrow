@@ -200,5 +200,5 @@ class ComprehensionsTest {
 
 interface OpMonad: ComprehensionsTest.Monad<ComprehensionsTest.ForOp> {
   override fun <A, B> Kind<ComprehensionsTest.ForOp, A>.map(f: (A) -> B): Kind<ComprehensionsTest.ForOp, B> =
-    t
+
 }

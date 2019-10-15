@@ -31,4 +31,5 @@ interface AsmSyntax {
       override fun CompilerContext.generateClassSyntheticParts(codegen: ImplementationBodyCodegen) =
         generateClassSyntheticParts(codegen)
     }
+
 }
