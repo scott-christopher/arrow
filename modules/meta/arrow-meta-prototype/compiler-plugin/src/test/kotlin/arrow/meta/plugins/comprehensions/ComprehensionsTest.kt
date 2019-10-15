@@ -1,24 +1,29 @@
 package arrow.meta.plugins.comprehensions
 
-import arrow.meta.plugin.testing.CompilationResult
+import arrow.Kind
+import arrow.given
 import arrow.meta.plugin.testing.CompilationData
-import arrow.meta.plugin.testing.assertCompilation
+import arrow.meta.plugin.testing.CompilationResult
 import arrow.meta.plugin.testing.CompilationStatus
-import arrow.meta.plugin.testing.invoke
-import arrow.meta.plugin.testing.getFieldFrom
 import arrow.meta.plugin.testing.InvocationData
+import arrow.meta.plugin.testing.assertCompilation
+import arrow.meta.plugin.testing.getFieldFrom
+import arrow.meta.plugin.testing.invoke
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
+typealias OpOf<A> = arrow.Kind<ComprehensionsTest.ForOp, A>
 
 class ComprehensionsTest {
 
   companion object {
     const val IO_CLASS_4_TESTS = """
-      import kotlin.reflect.KProperty
-  
+      //import kotlin.reflect.KProperty
+      import arrow.given
+      import arrow.Kind
+      
       //metadebug
   
-      class IO<A>(val value: A) {
+      /*class IO<A>(val value: A) {
   
         operator fun getValue(value: Any?, property: KProperty<*>): A = TODO()
   
@@ -29,9 +34,42 @@ class ComprehensionsTest {
           fun <A> fx(f: IO.Companion.() -> A): IO<A> = TODO()
           fun <A> just(a: A): IO<A> = IO(a)
         }
+      }*/
+      
+      
+      
+      interface Monad<F> {
+          fun <A, B> Kind<F, A>.map(f: (A) -> B): Kind<F, B>
+      }
+
+      interface Service<F> {
+          fun Kind<F, Int>.addOne(FF: Monad<F> = given): Kind<F, Int> =
+            map { it + 1 }
       }
       """
   }
+
+  interface Monad<F> {
+    fun <A, B> Kind<F, A>.map(f: (A) -> B): Kind<F, B>
+  }
+
+  interface Service<F> {
+    fun Kind<F, Int>.addOne(FF: Monad<F> = given): Kind<F, Int> = TODO()
+     // map { it + 1 }
+  }
+
+  class Op<A>(vararg val el: A)
+
+  class ForOp private constructor() {
+    companion object
+  }
+
+
+  @Suppress("UNCHECKED_CAST", "NOTHING_TO_INLINE")
+  inline fun <A> OpOf<A>.fix(): Op<A> =
+    this as Op<A>
+
+
 
   @Test
   fun `simple_case`() {
@@ -42,16 +80,18 @@ class ComprehensionsTest {
         sourceContent = """
           $IO_CLASS_4_TESTS
           
-          fun test(): IO<Int> =
+          object : Service<ListK>
+          
+          /*fun test(): IO<Int> =
             IO.fx {
               val a: Int by IO(1)
               val b: Int by IO(2)
               a + b
-            }
+            }*/
           """,
         generatedFileContent = null,
         generatedClasses = arrayListOf(
-          "SimpleCaseKt", "IO", "IO\$Companion", "SimpleCaseKt\$\$test\$lambda-1\$lambda-0\$1", "\$test\$lambda-1\$0"),
+          /*"SimpleCaseKt", "IO", "IO\$Companion", "SimpleCaseKt\$\$test\$lambda-1\$lambda-0\$1", "\$test\$lambda-1\$0"*/),
         compilationStatus = CompilationStatus.OK
       )
     )
@@ -69,7 +109,7 @@ class ComprehensionsTest {
     assertThat(getFieldFrom(resultForTest, "value")).isEqualTo(3)
   }
 
-  @Test
+ /* @Test
   fun `simple_case_with_type_inference`() {
 
     val compilationResult: CompilationResult? = assertCompilation(
@@ -155,5 +195,10 @@ class ComprehensionsTest {
     val field = getFieldFrom(resultForTest, "value")
     assertThat(field).isEqualTo(10)
     assertThat(field::class).isEqualTo(Int::class)
-  }
+  }*/
+}
+
+interface OpMonad: ComprehensionsTest.Monad<ComprehensionsTest.ForOp> {
+  override fun <A, B> Kind<ComprehensionsTest.ForOp, A>.map(f: (A) -> B): Kind<ComprehensionsTest.ForOp, B> =
+    t
 }
