@@ -30,6 +30,36 @@ class ComprehensionsTest {
       |   }
       | }
       """
+    const val TESTS = """
+      | val a = 4
+      | val c = {i: Int -> i + a}
+      | fun a(): Unit = println("47")
+      | suspend fun alpha(i: Int): Int = println(i * i)
+      """
+    const val TC_TESTS = """
+      import arrow.given
+      import arrow.Kind
+
+      //metadebug
+      
+      interface Mappable<F> {
+        fun <A, B> Kind<F, A>.map(f: (A) -> B): Kind<F, B>
+      }
+      
+      object Test {
+      
+        fun <F> Kind<F, Int>.addOne(M: Mappable<F> = given) : Kind<F, Int> =
+          map { it + 1 }
+      
+      }
+      
+      fun foo() {
+        Test.run {
+          val result: Option<Int> = Some(1).addOne()
+          println(result)
+        }
+      }
+      """
   }
 
   @Test

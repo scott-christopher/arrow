@@ -21,15 +21,17 @@ sealed class Check {
 
   data class CompilationError(
     val partialMessage: String
-  ): Check()
+  ) : Check()
 
   data class GeneratedSourceCode(
     val code: String
-  ): Check()
+  ) : Check()
 
   data class GeneratedClasses(
     val filenamesWithoutExt: List<String>
-  ): Check()
+  ) : Check()
+
+  object NoCheck : Check()
 }
 
 data class Field(
