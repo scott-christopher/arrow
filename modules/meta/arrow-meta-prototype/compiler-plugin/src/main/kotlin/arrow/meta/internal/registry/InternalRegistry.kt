@@ -152,7 +152,7 @@ interface InternalRegistry : ConfigSyntax {
     project: Project,
     configuration: CompilerConfiguration
   ) {
-    println("Project allowed extensions: ${Extensions.getArea(project).extensionPoints.toList().joinToString("\n")}")
+    //println("Project allowed extensions: ${Extensions.getArea(project).extensionPoints.toList().joinToString("\n")}")
     cli {
       println("it's the CLI plugin")
     }
@@ -166,9 +166,9 @@ interface InternalRegistry : ConfigSyntax {
     val ctx = CompilerContext(project, messageCollector, scope)
     registerPostAnalysisContextEnrichment(project, ctx)
 
-    println("System.properties are: " + System.getProperties().map {
+    /*println("System.properties are: " + System.getProperties().map {
       "\n${it.key} : ${it.value}"
-    })
+    })*/
 
     installArrowPlugin()
 

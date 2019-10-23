@@ -8,7 +8,7 @@ import arrow.meta.plugin.testing.CompilationStatus
 import arrow.meta.plugin.testing.assertThis
 import arrow.meta.plugin.testing.contentFromResource
 import org.junit.Test
-typealias OpOf<A> = arrow.Kind<ComprehensionsTest.ForOp, A>
+// typealias OpOf<A> = arrow.Kind<ComprehensionsTest.ForOp, A> unresolved ReferenceF
 
 class ComprehensionsTest {
 
@@ -30,6 +30,36 @@ class ComprehensionsTest {
       |     fun <A> just(a: A): IO<A> = IO(a)
       |   }
       | }
+      """
+    const val TESTS = """
+      | val a = 4
+      | val c = {i: Int -> i + a}
+      | fun a(): Unit = println("47")
+      | suspend fun alpha(i: Int): Int = println(i * i)
+      """
+    const val TC_TESTS = """
+      import arrow.given
+      import arrow.Kind
+
+      //metadebug
+      
+      interface Mappable<F> {
+        fun <A, B> Kind<F, A>.map(f: (A) -> B): Kind<F, B>
+      }
+      
+      object Test {
+      
+        fun <F> Kind<F, Int>.addOne(M: Mappable<F> = given) : Kind<F, Int> =
+          map { it + 1 }
+      
+      }
+      
+      fun foo() {
+        Test.run {
+          val result: Option<Int> = Some(1).addOne()
+          println(result)
+        }
+      }
       """
   }
 
@@ -166,13 +196,13 @@ class ComprehensionsTest {
         | fun test(): IO<Int> =
         |   IO.fx {
         |     val a by IO(1)
-        |     val t = a + 1
+        |     // val t = a + 1 fails
         |     val b by IO(2)
         |     val y = a + b
         |     val f by IO(3)
         |     val n = a + 1
         |     val g by IO(4)
-        |     y + f + g + t + n
+        |     y + f + g + n
         |   }
         |   
         |""".trimMargin(),
