@@ -51,7 +51,7 @@ interface IORaceTriple {
    * @see [arrow.fx.typeclasses.Concurrent.raceN] for a simpler version that cancels losers.
    */
   fun <A, B, C> raceTriple(ctx: CoroutineContext, ioA: IOOf<A>, ioB: IOOf<B>, ioC: IOOf<C>): IO<RaceTriple<ForIO, A, B, C>> =
-    IO.Async { conn, cb ->
+    IO.Async { conn, e, cb ->
       val active = AtomicBooleanW(true)
 
       val upstreamCancelToken = defer { if (conn.isCanceled()) unit else conn.cancel() }
@@ -70,7 +70,7 @@ interface IORaceTriple {
 
       conn.push(connA.cancel(), connB.cancel(), connC.cancel())
 
-      IORunLoop.startCancelable(IOForkedStart(ioA, ctx), connA) { either: Either<Throwable, A> ->
+      IORunLoop.startCancelable(IOForkedStart(ioA, ctx), connA, e) { either: Either<Throwable, A> ->
         either.fold({ error ->
           if (active.getAndSet(false)) { // if an error finishes first, stop the race.
             connB.cancel().fix().unsafeRunAsync { r2 ->
@@ -97,7 +97,7 @@ interface IORaceTriple {
         })
       }
 
-      IORunLoop.startCancelable(IOForkedStart(ioB, ctx), connB) { either: Either<Throwable, B> ->
+      IORunLoop.startCancelable(IOForkedStart(ioB, ctx), connB, e) { either: Either<Throwable, B> ->
         either.fold({ error ->
           if (active.getAndSet(false)) { // if an error finishes first, stop the race.
             connA.cancel().fix().unsafeRunAsync { r2 ->
@@ -124,7 +124,7 @@ interface IORaceTriple {
         })
       }
 
-      IORunLoop.startCancelable(IOForkedStart(ioC, ctx), connC) { either: Either<Throwable, C> ->
+      IORunLoop.startCancelable(IOForkedStart(ioC, ctx), connC, e) { either: Either<Throwable, C> ->
         either.fold({ error ->
           if (active.getAndSet(false)) { // if an error finishes first, stop the race.
             connA.cancel().fix().unsafeRunAsync { r2 ->

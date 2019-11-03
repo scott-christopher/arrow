@@ -5,9 +5,11 @@ import arrow.core.Left
 import arrow.core.NonFatal
 import arrow.core.Right
 import arrow.core.nonFatalOrThrow
+import arrow.fx.extensions.io.environment.environment
+import arrow.fx.internal.*
 import arrow.fx.internal.ArrowInternalException
-import arrow.fx.internal.Platform
 import arrow.fx.internal.Platform.ArrayStack
+import arrow.fx.typeclasses.Environment
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
@@ -16,25 +18,26 @@ private typealias Current = IOOf<Any?>
 private typealias BindF = (Any?) -> IO<Any?>
 private typealias CallStack = ArrayStack<BindF>
 private typealias Callback = (Either<Throwable, Any?>) -> Unit
+private typealias ErrorHandler = (Throwable) -> IOOf<Unit>
 
 @Suppress("UNCHECKED_CAST", "ReturnCount", "ComplexMethod")
 internal object IORunLoop {
 
-  fun <A> start(source: IOOf<A>, cb: (Either<Throwable, A>) -> Unit): Unit =
-    loop(source, IOConnection.uncancelable, cb as Callback, null, null, null, EmptyCoroutineContext)
+  fun <A> start(source: IOOf<A>, E: Environment<ForIO>, cb: (Either<Throwable, A>) -> Unit): Unit =
+    loop(source, IOConnection.uncancelable, E, cb as Callback, null, null, null, EmptyCoroutineContext)
 
   /**
    * Evaluates the given `IO` reference, calling the given callback
    * with the result when completed.
    */
-  fun <A> startCancelable(source: IOOf<A>, conn: IOConnection, cb: (Either<Throwable, A>) -> Unit): Unit =
-    loop(source, conn, cb as Callback, null, null, null, EmptyCoroutineContext)
+  fun <A> startCancelable(source: IOOf<A>, conn: IOConnection, E: Environment<ForIO>, cb: (Either<Throwable, A>) -> Unit): Unit =
+    loop(source, conn, E, cb as Callback, null, null, null, EmptyCoroutineContext)
 
-  fun <A> step(source: IO<A>): IO<A> {
+  fun <A> step(source: IO<A>, E: Environment<ForIO> = IO.environment()): IO<A> {
     var currentIO: Current? = source
     var bFirst: BindF? = null
     var bRest: CallStack? = null
-    var hasResult: Boolean = false
+    var hasResult = false
     var result: Any? = null
 
     do {
@@ -44,8 +47,7 @@ internal object IORunLoop {
           hasResult = true
         }
         is IO.RaiseError -> {
-          val errorHandler: IOFrame<Any?, IO<Any?>>? = findErrorHandlerInCallStack(bFirst, bRest)
-          when (errorHandler) {
+          when (val errorHandler: IOFrame<Any?, IO<Any?>>? = findErrorHandlerInCallStack(bFirst, bRest)) {
             // Return case for unhandled errors
             null -> return currentIO
             else -> {
@@ -105,8 +107,8 @@ internal object IORunLoop {
         }
         is IO.ContextSwitch -> {
           val localCurrent = currentIO
-          return IO.Async { conn, cb ->
-            loop(localCurrent, conn, cb as Callback, null, bFirst, bRest, EmptyCoroutineContext)
+          return IO.Async { conn, _, cb ->
+            loop(localCurrent, conn, E, cb as Callback, null, bFirst, bRest, EmptyCoroutineContext)
           }
         }
         null -> {
@@ -141,8 +143,8 @@ internal object IORunLoop {
   private fun suspendAsync(currentIO: IO<Any?>, bFirst: BindF?, bRest: CallStack?): IO<Any?> =
     // Hitting an async boundary means we have to stop, however if we had previous `flatMap` operations then we need to resume the loop with the collected stack
     if (bFirst != null || (bRest != null && bRest.isNotEmpty())) {
-      IO.Async { conn, cb ->
-        loop(currentIO, conn, cb, null, bFirst, bRest, EmptyCoroutineContext)
+      IO.Async { conn, e, cb ->
+        loop(currentIO, conn, e, cb, null, bFirst, bRest, EmptyCoroutineContext)
       }
     } else {
       currentIO
@@ -151,6 +153,7 @@ internal object IORunLoop {
   private fun loop(
     source: Current,
     cancelable: IOConnection,
+    E: Environment<ForIO>,
     cb: (Either<Throwable, Any?>) -> Unit,
     rcbRef: RestartCallback?,
     bFirstRef: BindF?,
@@ -164,7 +167,7 @@ internal object IORunLoop {
     var rcb: RestartCallback? = rcbRef
     // Values from Pure and Delay are unboxed in this var,
     // for code reuse between Pure and Delay
-    var hasResult: Boolean = false
+    var hasResult = false
     var result: Any? = null
 
     do {
@@ -178,8 +181,7 @@ internal object IORunLoop {
           hasResult = true
         }
         is IO.RaiseError -> {
-          val errorHandler: IOFrame<Any?, IO<Any?>>? = findErrorHandlerInCallStack(bFirst, bRest)
-          when (errorHandler) {
+          when (val errorHandler: IOFrame<Any?, IO<Any?>>? = findErrorHandlerInCallStack(bFirst, bRest)) {
             // Return case for unhandled errors
             null -> {
               cb(Left(currentIO.exception))
@@ -211,7 +213,7 @@ internal object IORunLoop {
         }
         is IO.Async -> {
           if (rcb == null) {
-            rcb = RestartCallback(conn, cb)
+            rcb = RestartCallback(conn, E, cb)
           }
 
           // Return case for Async operations
@@ -220,7 +222,7 @@ internal object IORunLoop {
         }
         is IO.Effect -> {
           if (rcb == null) {
-            rcb = RestartCallback(conn, cb)
+            rcb = RestartCallback(conn, E, cb)
           }
 
           // Return case for Effect operations
@@ -361,7 +363,7 @@ internal object IORunLoop {
    * A `RestartCallback` gets created only once, per [startCancelable] (`unsafeRunAsync`) invocation, once an `Async`
    * state is hit, its job being to resume the loop after the boundary, but with the bind call-stack restored.
    */
-  private data class RestartCallback(val connInit: IOConnection, val cb: Callback) : Callback, kotlin.coroutines.Continuation<Any?> {
+  private data class RestartCallback(val connInit: IOConnection, val E: Environment<ForIO>, val cb: Callback) : Callback, kotlin.coroutines.Continuation<Any?> {
 
     // Nasty trick to re-use `Continuation` with different CC.
     private var _context: CoroutineContext = EmptyCoroutineContext
@@ -394,7 +396,7 @@ internal object IORunLoop {
     fun start(async: IO.Async<Any?>, ctx: CoroutineContext, bFirst: BindF?, bRest: CallStack?) {
       prepare(ctx, bFirst, bRest)
       trampolineAfter = async.shouldTrampoline
-      async.k(conn, this)
+      async.k(conn, E, this)
     }
 
     fun start(effect: IO.Effect<Any?>, ctx: CoroutineContext, bFirst: BindF?, bRest: CallStack?) {
@@ -411,7 +413,7 @@ internal object IORunLoop {
       this.bRest = null
       this._context = EmptyCoroutineContext
 
-      loop(result, conn, cb, this, bFirst, bRest, ctx)
+      loop(result, conn, E, cb, this, bFirst, bRest, ctx)
     }
 
     override operator fun invoke(either: Either<Throwable, Any?>) {

@@ -28,7 +28,6 @@ import arrow.fx.extensions.io.concurrent.concurrent
 import arrow.fx.extensions.io.dispatchers.dispatchers
 import arrow.fx.typeclasses.ConcurrentSyntax
 import arrow.fx.typeclasses.Environment
-import arrow.fx.typeclasses.UnsafeRun
 import arrow.extension
 import arrow.typeclasses.Applicative
 import arrow.typeclasses.ApplicativeError
@@ -240,27 +239,31 @@ interface IOMonoid<A> : Monoid<IO<A>>, IOSemigroup<A> {
 }
 
 @extension
-interface IOUnsafeRun : UnsafeRun<ForIO> {
-
-  override suspend fun <A> unsafe.runBlocking(fa: () -> Kind<ForIO, A>): A = fa().fix().unsafeRunSync()
-
-  override suspend fun <A> unsafe.runNonBlocking(fa: () -> Kind<ForIO, A>, cb: (Either<Throwable, A>) -> Unit) =
-    fa().fix().unsafeRunAsync(cb)
-}
-
-@extension
 interface IODispatchers : Dispatchers<ForIO> {
-  override fun default(): CoroutineContext =
+  override fun computation(): CoroutineContext =
     IODispatchers.CommonPool
+
+  override fun blocking(): CoroutineContext =
+    IODispatchers.BlockingIO
 }
 
 @extension
 interface IOEnvironment : Environment<ForIO> {
-  override fun dispatchers(): Dispatchers<ForIO> =
-    IO.dispatchers()
 
-  override fun handleAsyncError(e: Throwable): IO<Unit> =
-    IO { println("Found uncaught async exception!"); e.printStackTrace() }
+  override fun handleAsyncError(e: Throwable): IO<Unit> = IO {
+      println("Found uncaught async exception!")
+      e.printStackTrace()
+      // exitProcess(-1)
+  }
+
+  override fun <A> Kind<ForIO, A>.runBlocking(): A =
+    fix().unsafeRunSync()
+
+  override fun <A> Kind<ForIO, A>.runNonBlocking(cb: (Either<Throwable, A>) -> Unit) =
+    fix().unsafeRunAsync(cb)
+
+  override fun <A> Kind<ForIO, A>.runNonBlockingCancelable(cb: (Either<Throwable, A>) -> Unit): Disposable =
+    fix().unsafeRunAsyncCancellable(OnCancel.Silent, cb)
 }
 
 @extension

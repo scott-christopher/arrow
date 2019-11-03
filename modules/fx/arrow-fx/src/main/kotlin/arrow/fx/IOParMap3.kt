@@ -24,7 +24,7 @@ interface IOParMap3 {
     fb: IOOf<B>,
     fc: IOOf<C>,
     f: (A, B, C) -> D
-  ): IO<D> = IO.Async { conn, cb ->
+  ): IO<D> = IO.Async { conn, e, cb ->
 
     val state: AtomicRefW<Option<Tuple3<Option<A>, Option<B>, Option<C>>>> = AtomicRefW(none())
     val active = AtomicBooleanW(true)
@@ -64,7 +64,7 @@ interface IOParMap3 {
         }
       } else Unit
 
-    IORunLoop.startCancelable(IOForkedStart(fa, ctx), connA) { resultA ->
+    IORunLoop.startCancelable(IOForkedStart(fa, ctx), connA, e) { resultA ->
       resultA.fold({ e ->
         sendError(connB, connC, e)
       }, { a ->
@@ -76,7 +76,7 @@ interface IOParMap3 {
       })
     }
 
-    IORunLoop.startCancelable(IOForkedStart(fb, ctx), connB) { resultB ->
+    IORunLoop.startCancelable(IOForkedStart(fb, ctx), connB, e) { resultB ->
       resultB.fold({ e ->
         sendError(connA, connC, e)
       }, { b ->
@@ -88,7 +88,7 @@ interface IOParMap3 {
       })
     }
 
-    IORunLoop.startCancelable(IOForkedStart(fc, ctx), connC) { resultC ->
+    IORunLoop.startCancelable(IOForkedStart(fc, ctx), connC, e) { resultC ->
       resultC.fold({ e ->
         sendError(connA, connB, e)
       }, { c ->

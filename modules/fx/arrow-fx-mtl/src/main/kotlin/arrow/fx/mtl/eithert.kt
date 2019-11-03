@@ -1,5 +1,6 @@
 package arrow.fx.mtl
 
+import arrow.Kind
 import arrow.core.Either
 import arrow.core.None
 import arrow.core.Option
@@ -26,6 +27,9 @@ import arrow.typeclasses.ApplicativeError
 import arrow.typeclasses.Monad
 import arrow.undocumented
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
 @extension
 @undocumented

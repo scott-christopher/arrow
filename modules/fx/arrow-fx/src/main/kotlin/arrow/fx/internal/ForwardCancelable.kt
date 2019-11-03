@@ -10,6 +10,7 @@ import arrow.fx.IORunLoop
 import arrow.fx.fix
 import arrow.fx.internal.ForwardCancelable.Companion.State.Active
 import arrow.fx.internal.ForwardCancelable.Companion.State.Empty
+import arrow.fx.typeclasses.Environment
 import kotlinx.atomicfu.atomic
 
 /**
@@ -21,20 +22,20 @@ class ForwardCancelable {
   private val state = atomic<State>(init)
 
   fun cancel(): CancelToken<ForIO> {
-    fun loop(conn: IOConnection, cb: (Either<Throwable, Unit>) -> Unit): Unit = state.value.let { current ->
+    fun loop(conn: IOConnection, e: Environment<ForIO>, cb: (Either<Throwable, Unit>) -> Unit): Unit = state.value.let { current ->
       when (current) {
         is State.Empty -> if (!state.compareAndSet(current, State.Empty(listOf(cb) + current.stack)))
-          loop(conn, cb)
+          loop(conn, e, cb)
 
         is Active -> {
           state.lazySet(finished) // GC purposes
           // TODO this runs in an immediate execution context in cats-effect
-          IORunLoop.startCancelable(current.token, conn, cb)
+          IORunLoop.startCancelable(current.token, conn, e, cb)
         }
       }
     }
 
-    return IO.Async { conn, cb -> loop(conn, cb) }
+    return IO.Async { conn, e, cb -> loop(conn, e, cb) }
   }
 
   fun complete(value: CancelToken<ForIO>): Unit = state.value.let { current ->

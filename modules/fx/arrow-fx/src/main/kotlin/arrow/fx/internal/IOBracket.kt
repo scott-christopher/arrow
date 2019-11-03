@@ -10,6 +10,7 @@ import arrow.fx.IOFrame
 import arrow.fx.IOOf
 import arrow.fx.IORunLoop
 import arrow.fx.fix
+import arrow.fx.typeclasses.Environment
 import arrow.fx.typeclasses.ExitCase
 import kotlinx.atomicfu.atomic
 
@@ -19,7 +20,7 @@ internal object IOBracket {
    * Implementation for `IO.bracketCase`.
    */
   operator fun <A, B> invoke(acquire: IOOf<A>, release: (A, ExitCase<Throwable>) -> IOOf<Unit>, use: (A) -> IOOf<B>): IO<B> =
-    IO.Async { conn, cb ->
+    IO.Async { conn, e, cb ->
       // Placeholder for the future finalizer
       val deferredRelease = ForwardCancelable()
       conn.push(deferredRelease.cancel())
@@ -30,7 +31,7 @@ internal object IOBracket {
       if (!conn.isCanceled()) {
         // Note `acquire` is uncancelable due to usage of `IORunLoop.start`
         // (in other words it is disconnected from our IOConnection)
-        IORunLoop.start(acquire, BracketStart(use, release, conn, deferredRelease, cb))
+        IORunLoop.start(acquire, e, BracketStart(use, release, conn, e, deferredRelease, cb))
       } else {
         deferredRelease.complete(IO.unit)
       }
@@ -41,6 +42,7 @@ internal object IOBracket {
     val use: (A) -> IOOf<B>,
     val release: (A, ExitCase<Throwable>) -> IOOf<Unit>,
     val conn: IOConnection,
+    val e: Environment<ForIO>,
     val deferredRelease: ForwardCancelable,
     val cb: (Either<Throwable, B>) -> Unit
   ) : (Either<Throwable, A>) -> Unit {
@@ -71,7 +73,7 @@ internal object IOBracket {
             // Registering our cancelable token ensures that in case cancellation is detected, release gets called
             deferredRelease.complete(frame.cancel)
             // Actual execution
-            IORunLoop.startCancelable(onNext(), conn, cb)
+            IORunLoop.startCancelable(onNext(), conn, e, cb)
           }
           is Either.Left -> cb(ea)
         }
@@ -80,7 +82,7 @@ internal object IOBracket {
   }
 
   fun <A> guaranteeCase(source: IO<A>, release: (ExitCase<Throwable>) -> IOOf<Unit>): IO<A> =
-    IO.Async { conn, cb ->
+    IO.Async { conn, e, cb ->
       Platform.trampoline {
         val frame = EnsureReleaseFrame<A>(release)
         val onNext = source.flatMap(frame)
@@ -91,7 +93,7 @@ internal object IOBracket {
         // Race condition check, avoiding starting `source` in case
         // the connection was already cancelled — n.b. we don't need
         // to trigger `release` otherwise, because it already happened
-        if (!conn.isCanceled()) IORunLoop.startCancelable(onNext, conn, cb)
+        if (!conn.isCanceled()) IORunLoop.startCancelable(onNext, conn, e, cb)
       }
     }
 

@@ -2,7 +2,9 @@ package arrow.fx
 
 import arrow.undocumented
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.ThreadFactory
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.ContinuationInterceptor
@@ -12,7 +14,14 @@ import kotlin.coroutines.CoroutineContext
 // FIXME use expected and actual for multiplatform
 object IODispatchers {
   // FIXME use ForkJoinPool.commonPool() in Java 8
+  @Deprecated(message = "Use IO.dispatchers().computation() instead", replaceWith = ReplaceWith("IO.dispatchers().computation()"))
   val CommonPool: CoroutineContext = ForkJoinPool().asCoroutineContext()
+
+  val BlockingIO: CoroutineContext = Executors.newCachedThreadPool { r ->
+    Thread(r, "arrow-io-pool").apply {
+      isDaemon = true
+    }
+  }.asCoroutineContext()
 }
 
 fun ExecutorService.asCoroutineContext(): CoroutineContext =

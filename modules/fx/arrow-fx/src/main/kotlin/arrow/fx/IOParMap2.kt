@@ -12,7 +12,7 @@ import kotlin.coroutines.CoroutineContext
 /** Mix-in to enable `parMapN` 2-arity on IO's companion directly. */
 interface IOParMap2 {
 
-  fun <A, B, C> parMapN(ctx: CoroutineContext, fa: IOOf<A>, fb: IOOf<B>, f: (A, B) -> C): IO<C> = IO.Async { conn, cb ->
+  fun <A, B, C> parMapN(ctx: CoroutineContext, fa: IOOf<A>, fb: IOOf<B>, f: (A, B) -> C): IO<C> = IO.Async { conn, e, cb ->
     // Used to store Throwable, Either<A, B> or empty (null). (No sealed class used for a slightly better preforming ParMap2)
     val state = AtomicRefW<Any?>(null)
 
@@ -38,7 +38,7 @@ interface IOParMap2 {
       }
     }
 
-    IORunLoop.startCancelable(IOForkedStart(fa, ctx), connA) { resultA ->
+    IORunLoop.startCancelable(IOForkedStart(fa, ctx), connA, e) { resultA ->
       resultA.fold({ e ->
         sendError(connB, e)
       }, { a ->
@@ -51,7 +51,7 @@ interface IOParMap2 {
       })
     }
 
-    IORunLoop.startCancelable(IOForkedStart(fb, ctx), connB) { resultB ->
+    IORunLoop.startCancelable(IOForkedStart(fb, ctx), connB, e) { resultB ->
       resultB.fold({ e ->
         sendError(connA, e)
       }, { b ->

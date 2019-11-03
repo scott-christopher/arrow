@@ -7,10 +7,9 @@ import arrow.core.internal.AtomicIntW
 import arrow.core.identity
 import arrow.fx.extensions.fx
 import arrow.fx.extensions.io.concurrent.concurrent
-import arrow.fx.extensions.io.unsafeRun.runBlocking
-import arrow.fx.extensions.io.unsafeRun.unsafeRun
+import arrow.fx.extensions.io.environment.environment
 import arrow.fx.typeclasses.Concurrent
-import arrow.fx.typeclasses.UnsafeRun
+import arrow.fx.typeclasses.Environment
 import arrow.test.UnitSpec
 import arrow.unsafe
 import io.kotlintest.shouldBe
@@ -57,7 +56,7 @@ class EffectsSuspendDSLTests : UnitSpec() {
       val program: IO<String> = IO.fx {
         helloWorld
       }
-      unsafe { runBlocking { program } } shouldBe helloWorld
+      IO.environment().run { program.runBlocking() }shouldBe helloWorld
     }
 
     "Direct syntax for concurrent operations" {
@@ -74,7 +73,9 @@ class EffectsSuspendDSLTests : UnitSpec() {
         ) { a, b -> listOf(a, b) }
         result
       }
-      unsafe { runBlocking { program } }.distinct().size shouldBe 2
+      IO.environment().run {
+        program.runBlocking()
+      }.distinct().size shouldBe 2
     }
 
     "raiseError" {
@@ -230,10 +231,10 @@ class EffectsSuspendDSLTests : UnitSpec() {
       fun <F> Concurrent<F>.program(): Kind<F, Int> =
         fx.concurrent { !effect { sideEffect() } }
 
-      fun <F> UnsafeRun<F>.main(fx: Concurrent<F>): Int =
-        unsafe { runBlocking { fx.program() } }
+      fun <F> Environment<F>.main(fx: Concurrent<F>): Int =
+        fx.program().runBlocking()
 
-      IO.unsafeRun().main(IO.concurrent()) shouldBe const
+      IO.environment().main(IO.concurrent()) shouldBe const
     }
 
     "(suspend () -> A) <-> Kind<F, A>" {
@@ -254,6 +255,8 @@ class EffectsSuspendDSLTests : UnitSpec() {
 }
 
 fun <A> fxTest(f: () -> IO<A>): A =
-  unsafe { runBlocking(f) }
+  IO.environment().run {
+    f().runBlocking()
+  }
 
 object TestError : Throwable()

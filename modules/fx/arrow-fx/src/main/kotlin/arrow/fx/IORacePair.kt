@@ -50,7 +50,7 @@ interface IORacePair {
    * @see [arrow.fx.typeclasses.Concurrent.raceN] for a simpler version that cancels loser.
    */
   fun <A, B> racePair(ctx: CoroutineContext, ioA: IOOf<A>, ioB: IOOf<B>): IO<RacePair<ForIO, A, B>> =
-    IO.Async { conn, cb ->
+    IO.Async { conn, e, cb ->
       val active = AtomicBooleanW(true)
 
       val upstreamCancelToken = defer { if (conn.isCanceled()) unit else conn.cancel() }
@@ -67,7 +67,7 @@ interface IORacePair {
 
       conn.pushPair(connA, connB)
 
-      IORunLoop.startCancelable(IOForkedStart(ioA, ctx), connA) { either: Either<Throwable, A> ->
+      IORunLoop.startCancelable(IOForkedStart(ioA, ctx), connA, e) { either: Either<Throwable, A> ->
         either.fold({ error ->
           if (active.getAndSet(false)) { // if an error finishes first, stop the race.
             connB.cancel().fix().unsafeRunAsync { r2 ->
@@ -87,7 +87,7 @@ interface IORacePair {
         })
       }
 
-      IORunLoop.startCancelable(IOForkedStart(ioB, ctx), connB) { either: Either<Throwable, B> ->
+      IORunLoop.startCancelable(IOForkedStart(ioB, ctx), connB, e) { either: Either<Throwable, B> ->
         either.fold({ error ->
           if (active.getAndSet(false)) { // if an error finishes first, stop the race.
             connA.cancel().fix().unsafeRunAsync { r2 ->
