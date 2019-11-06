@@ -19,6 +19,7 @@ import arrow.core.identity
 import arrow.core.k
 import arrow.core.orElse
 import arrow.extension
+import arrow.given
 import arrow.typeclasses.Alternative
 import arrow.typeclasses.Applicative
 import arrow.typeclasses.ApplicativeError
@@ -48,6 +49,17 @@ import arrow.typeclasses.TraverseFilter
 import arrow.core.extensions.traverse as optionTraverse
 import arrow.core.extensions.traverseFilter as optionTraverseFilter
 import arrow.core.select as optionSelect
+
+object OptionTestWithMeta {
+  fun <F> Kind<F, Int>.addOne(M: Functor<F> = given): Kind<F, Int> =
+    map { it + 1 }
+}
+
+fun foo() = OptionTestWithMeta.run { Some(5).addOne() }
+
+fun main() {
+  println(foo())
+}
 
 @extension
 interface OptionSemigroup<A> : Semigroup<Option<A>> {
