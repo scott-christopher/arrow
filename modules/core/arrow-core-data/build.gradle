@@ -1,29 +1,33 @@
 buildscript {
-    dependencies {
-        classpath "io.arrow-kt:gradle-plugin:0.10.3-rc-2"
-    }
+  dependencies {
+    classpath "io.arrow-kt:gradle-plugin:0.10.3-rc-94"
+    classpath "io.github.classgraph:classgraph:4.8.47"
+    classpath "io.arrow-kt:arrow-meta-compiler-plugin:0.10.3-SNAPSHOT"
+  }
 
-    repositories {
-        maven { url "https://plugins.gradle.org/m2/" }
-        maven { url 'https://oss.jfrog.org/artifactory/oss-snapshot-local/' }
-    }
+  repositories {
+    // maven { url "https://plugins.gradle.org/m2/" }
+    mavenLocal()
+    mavenCentral()
+    maven { url 'https://oss.jfrog.org/artifactory/oss-snapshot-local/' }
+  }
 }
 
 apply plugin: 'kotlin-kapt'
 
 dependencies {
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
-    compile project(':arrow-annotations')
-    kapt project(':arrow-meta')
-    kaptTest project(':arrow-meta')
-    compileOnly project(':arrow-meta')
-    testCompileOnly project(':arrow-meta')
-    testRuntime("org.junit.vintage:junit-vintage-engine:$jUnitVintageVersion")
-    testCompile "io.kotlintest:kotlintest-runner-junit5:$kotlinTestVersion"
-    testCompile project(':arrow-test')
-    testCompile project(':arrow-syntax')
-    testCompile project(':arrow-core')
-    testCompile project(':arrow-mtl')
+  compile "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
+  compile project(':arrow-annotations')
+  // kapt project(':arrow-meta')
+  kaptTest project(':arrow-meta')
+  compileOnly project(':arrow-meta')
+  testCompileOnly project(':arrow-meta')
+  testRuntime("org.junit.vintage:junit-vintage-engine:$jUnitVintageVersion")
+  testCompile "io.kotlintest:kotlintest-runner-junit5:$kotlinTestVersion"
+  testCompile project(':arrow-test')
+  testCompile project(':arrow-syntax')
+  testCompile project(':arrow-core')
+  testCompile project(':arrow-mtl')
 }
 
 apply from: rootProject.file('gradle/gradle-mvn-push.gradle')
