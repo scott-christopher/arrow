@@ -1,13 +1,12 @@
 buildscript {
   dependencies {
-    classpath "io.arrow-kt:gradle-plugin:0.10.3-rc-94"
+    classpath "io.arrow-kt:gradle-plugin:0.10.3-rc-2"
     classpath "io.github.classgraph:classgraph:4.8.47"
     classpath "io.arrow-kt:arrow-meta-compiler-plugin:0.10.3-SNAPSHOT"
   }
 
   repositories {
-    // maven { url "https://plugins.gradle.org/m2/" }
-    mavenLocal()
+    maven { url "https://plugins.gradle.org/m2/" }
     mavenCentral()
     maven { url 'https://oss.jfrog.org/artifactory/oss-snapshot-local/' }
   }
