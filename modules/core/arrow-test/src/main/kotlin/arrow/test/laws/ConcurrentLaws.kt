@@ -15,6 +15,7 @@ import arrow.fx.Promise
 import arrow.fx.Semaphore
 import arrow.fx.typeclasses.Concurrent
 import arrow.fx.typeclasses.ExitCase
+import arrow.test.generators.applicative
 import arrow.test.generators.applicativeError
 import arrow.test.generators.either
 import arrow.test.generators.throwable
@@ -212,7 +213,7 @@ object ConcurrentLaws {
     }
 
   fun <F> Concurrent<F>.startCancelIsUnit(EQ_UNIT: Eq<Kind<F, Unit>>, ctx: CoroutineContext): Unit =
-    forAll(Gen.int().applicativeError(this)) { fa ->
+    forAll(Gen.int().applicative(this)) { fa ->
       fa.fork(ctx).flatMap { (_, cancel) -> cancel }
         .equalUnderTheLaw(just<Unit>(Unit), EQ_UNIT)
     }
