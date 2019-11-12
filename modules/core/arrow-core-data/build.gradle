@@ -2,7 +2,7 @@ buildscript {
   dependencies {
     classpath "io.arrow-kt:gradle-plugin:0.10.3-rc-2"
     classpath "io.github.classgraph:classgraph:4.8.47"
-    classpath "io.arrow-kt:arrow-meta-compiler-plugin:0.10.3-SNAPSHOT"
+    classpath "io.arrow-kt:arrow-meta-compiler-plugin:0.10.3-SNAPSHOT:all"
   }
 
   repositories {
@@ -17,7 +17,7 @@ apply plugin: 'kotlin-kapt'
 dependencies {
   compile "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
   compile project(':arrow-annotations')
-  // kapt project(':arrow-meta')
+  kapt project(':arrow-meta')
   kaptTest project(':arrow-meta')
   compileOnly project(':arrow-meta')
   testCompileOnly project(':arrow-meta')

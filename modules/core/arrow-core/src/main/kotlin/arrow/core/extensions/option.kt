@@ -4,6 +4,7 @@ package arrow.core.extensions
 
 import arrow.Kind
 import arrow.core.Either
+import arrow.core.EitherOf
 import arrow.core.Eval
 import arrow.core.ForOption
 import arrow.core.None
@@ -18,6 +19,7 @@ import arrow.core.fix
 import arrow.core.identity
 import arrow.core.k
 import arrow.core.orElse
+import arrow.core.right
 import arrow.extension
 import arrow.given
 import arrow.typeclasses.Alternative
@@ -56,9 +58,10 @@ object OptionTestWithMeta {
 }
 
 fun foo(): OptionOf<Int> = OptionTestWithMeta.run { Some(5).addOne() }
+fun fo(): EitherOf<Nothing, Int> = OptionTestWithMeta.run { 3.right().addOne() }
 
 fun main() {
-  println(foo())
+  println(fo())
 }
 
 @extension
