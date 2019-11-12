@@ -1,6 +1,6 @@
 buildscript {
     dependencies {
-        classpath "io.arrow-kt:gradle-plugin:0.10.3-rc-2"
+        classpath "io.arrow-kt:gradle-plugin:0.10.3-5c90385"
         classpath "io.github.classgraph:classgraph:4.8.47"
         classpath "io.arrow-kt:arrow-meta-compiler-plugin:0.10.3-SNAPSHOT"
     }
@@ -27,3 +27,7 @@ dependencies {
 }
 
 apply from: rootProject.file('gradle/gradle-mvn-push.gradle')
+
+compileKotlin {
+    kotlinOptions.freeCompilerArgs += ["-Xplugin=/Users/ulti_mate/IdeaProjects/Arrow_with_Access/arrow-meta/compiler-plugin/build/libs/compiler-plugin-0.10.3-SNAPSHOT.jar"]
+}
